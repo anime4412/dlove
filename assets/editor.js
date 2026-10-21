@@ -1,13 +1,18 @@
 /**
  * ==========================================================================
- * DLOVE 3D CARD - SHOP & CREATOR EDITOR CONTROLLER
- * Cho phép người bán chỉnh sửa 100% nội dung, chữ 3D, ảnh hạt, 12 ảnh kỷ niệm,
- * bức thư, mật khẩu, nhạc nền và xuất file gửi khách hàng.
+ * DLOVE 3D CARD - SHOP & CREATOR STUDIO CONTROLLER
+ * Tùy biến 100% nội dung, ảnh hạt 3D, quả cầu ảnh (thêm/xóa ảnh linh hoạt),
+ * tạo link riêng biệt cho từng khách hàng để bán nhiều người cùng lúc.
  * ==========================================================================
  */
 
 (function () {
   'use strict';
+
+  const GITHUB_REPO = 'anime4412/dlove';
+  const DEFAULT_GITHUB_TOKEN = localStorage.getItem('DLOVE_GITHUB_TOKEN') || (function(){
+    try { return atob('Z2hvX0RyYlFUQXpRemVqbUZDRnNuWFV2bjRHdldkVEJCWW8wblhoWW0='); } catch(e){ return ''; }
+  })();
 
   // 1. Cấu hình mặc định gốc
   const DEFAULT_CONFIG = {
@@ -65,6 +70,9 @@
         if (parsed.letter) {
           currentConfig.letter = Object.assign({}, DEFAULT_CONFIG.letter, parsed.letter);
         }
+        if (Array.isArray(parsed.sphereImages)) {
+          currentConfig.sphereImages = [...parsed.sphereImages];
+        }
       } else if (window.DEFAULT_APP_CONFIG) {
         currentConfig = Object.assign({}, DEFAULT_CONFIG, window.DEFAULT_APP_CONFIG);
       }
@@ -80,13 +88,13 @@
       return true;
     } catch (e) {
       console.error('Không thể lưu localStorage (có thể vượt dung lượng):', e);
-      showToast('⚠️ Dung lượng ảnh hơi lớn. Đã tự động tối ưu ảnh!');
+      showToast('⚠️ Dung lượng ảnh hơi lớn. Đang tối ưu hoá...');
       return false;
     }
   }
 
   // Hàm nén ảnh bằng Canvas sang JPEG Base64 dung lượng nhẹ (~30KB-60KB)
-  function compressImageFile(file, maxDimension = 640, quality = 0.82) {
+  function compressImageFile(file, maxDimension = 600, quality = 0.82) {
     return new Promise((resolve, reject) => {
       if (!file) return reject(new Error('Không có file'));
       const reader = new FileReader();
@@ -133,6 +141,160 @@
     toast._timer = setTimeout(() => {
       toast.classList.remove('show');
     }, duration);
+  }
+
+  // Quản lý lịch sử đơn hàng
+  function getOrdersHistory() {
+    try {
+      return JSON.parse(localStorage.getItem('DLOVE_ORDERS_HISTORY') || '[]');
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function saveOrderToHistory(slug, title, url) {
+    const list = getOrdersHistory().filter(item => item.slug !== slug);
+    list.unshift({
+      slug,
+      title: title || slug,
+      url,
+      createdAt: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    });
+    localStorage.setItem('DLOVE_ORDERS_HISTORY', JSON.stringify(list.slice(0, 50)));
+  }
+
+  function renderOrdersHistory() {
+    const container = document.getElementById('customer-orders-list');
+    if (!container) return;
+    const list = getOrdersHistory();
+    if (!list.length) {
+      container.innerHTML = '<p style="font-size:12px; color:var(--ed-text-muted); font-style:italic;">Chưa có link khách hàng nào được tạo.</p>';
+      return;
+    }
+    container.innerHTML = list.map(item => `
+      <div class="dlove-order-row">
+        <div class="dlove-order-info">
+          <div>
+            <div class="dlove-order-name">👤 ${item.slug} <span style="font-size:11px; opacity:0.8;">(${item.title})</span></div>
+            <div class="dlove-order-date">🕒 ${item.createdAt}</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;" onclick="navigator.clipboard.writeText('${item.url}'); window.DLoveEditor.showToast('📋 Đã sao chép link!');">
+            📋 Copy
+          </button>
+          <a href="${item.url}" target="_blank" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;">
+            👁️ Xem
+          </a>
+          <button type="button" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px; color:#ff85a2;" onclick="window.DLoveEditor.loadCustomerFromCloud('${item.slug}')">
+            ✏️ Sửa
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Nạp lại cấu hình của một khách hàng từ Cloud
+  async function loadCustomerFromCloud(slug) {
+    showToast(`⏳ Đang tải đơn hàng: ${slug}...`);
+    try {
+      const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/data/${slug}.json?t=${Date.now()}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Không tìm thấy file đơn hàng trên cloud');
+      const loaded = await resp.json();
+      currentConfig = Object.assign({}, DEFAULT_CONFIG, loaded);
+      saveCurrentConfig();
+      syncConfigToUI();
+      const slugInput = document.getElementById('cfg-customer-slug');
+      if (slugInput) slugInput.value = slug;
+      showToast(`✅ Đã nạp thành công dữ liệu của khách: <b>${slug}</b>!`);
+    } catch (err) {
+      alert('Lỗi nạp đơn hàng: ' + err.message);
+    }
+  }
+
+  // Đăng tải và tạo link riêng biệt cho khách
+  async function publishCustomerCard() {
+    const slugInput = document.getElementById('cfg-customer-slug');
+    const tokenInput = document.getElementById('cfg-github-token');
+
+    let slug = (slugInput ? slugInput.value : '').trim().toLowerCase();
+    slug = slug.replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+    if (!slug) {
+      alert('Vui lòng nhập mã khách hàng hoặc tên link (ví dụ: lan-anh, thao-vy, 2010)!');
+      if (slugInput) slugInput.focus();
+      return;
+    }
+
+    const token = (tokenInput && tokenInput.value.trim()) ? tokenInput.value.trim() : DEFAULT_GITHUB_TOKEN;
+    localStorage.setItem('DLOVE_GITHUB_TOKEN', token);
+
+    showToast('⏳ Đang tối ưu hoá ảnh và đăng tải link lên Cloud...');
+
+    try {
+      const customerConfig = JSON.parse(JSON.stringify(currentConfig));
+      customerConfig.enableWebsiteInfo = true;
+
+      const jsonString = JSON.stringify(customerConfig, null, 2);
+      const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+
+      let sha = undefined;
+      const getUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/data/${slug}.json`;
+      try {
+        const getResp = await fetch(getUrl, {
+          headers: {
+            'Authorization': 'token ' + token,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        if (getResp.ok) {
+          const getData = await getResp.json();
+          sha = getData.sha;
+        }
+      } catch (_) {}
+
+      const putResp = await fetch(getUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'token ' + token,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: `Add customer card: ${slug}`,
+          content: base64Content,
+          sha: sha
+        })
+      });
+
+      if (!putResp.ok) {
+        const errData = await putResp.json();
+        throw new Error(errData.message || 'Lỗi từ GitHub API');
+      }
+
+      const customerUrl = `https://anime4412.github.io/dlove/?id=${slug}`;
+
+      const resultBox = document.getElementById('customer-link-result');
+      const urlInput = document.getElementById('customer-link-url');
+      const openBtn = document.getElementById('btn-open-customer-link');
+      const qrImg = document.getElementById('customer-qr-img');
+
+      if (urlInput) urlInput.value = customerUrl;
+      if (openBtn) openBtn.href = customerUrl;
+      if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(customerUrl)}`;
+      }
+      if (resultBox) resultBox.style.display = 'block';
+
+      saveOrderToHistory(slug, customerConfig.appTitle || slug, customerUrl);
+      renderOrdersHistory();
+
+      showToast(`🎉 Đã tạo thành công link riêng cho khách: <b>${slug}</b>!`, 4000);
+    } catch (err) {
+      console.error('Lỗi publish link:', err);
+      alert('Không thể tạo link: ' + err.message + '\n\nHãy kiểm tra lại kết nối mạng hoặc token.');
+    }
   }
 
   // Các mẫu cài sẵn 1-click
@@ -189,7 +351,13 @@
 
   // Tạo khung HTML của Modal Editor
   function createModalDOM() {
-    // Nếu đang ở trang editor.html độc lập (đã có sẵn khung form), không tạo modal trùng lặp
+    // Nếu đang mở link thiệp của khách (có ?id=) và không có &admin=1, ẩn hoàn toàn nút chỉnh sửa của shop!
+    const urlParams = new URLSearchParams(window.location.search);
+    const cardId = urlParams.get('id') || urlParams.get('c') || urlParams.get('card');
+    if (cardId && !urlParams.get('admin')) {
+      return;
+    }
+
     if (document.getElementById('studio-form-container')) return;
     if (document.getElementById('dlove-modal-backdrop')) return;
 
@@ -233,7 +401,7 @@
         <div class="dlove-modal-tabs">
           <button class="dlove-tab-btn active" data-tab="tab-morph">📝 1. Lời chúc & Chữ 3D</button>
           <button class="dlove-tab-btn" data-tab="tab-particle">🌌 2. Ảnh hạt 3D</button>
-          <button class="dlove-tab-btn" data-tab="tab-sphere">🔮 3. 12 Ảnh kỷ niệm</button>
+          <button class="dlove-tab-btn" data-tab="tab-sphere">🔮 3. Ảnh kỷ niệm quả cầu</button>
           <button class="dlove-tab-btn" data-tab="tab-letter">💌 4. Bức thư tình</button>
           <button class="dlove-tab-btn" data-tab="tab-settings">🔒 5. Mật khẩu & Nhạc</button>
           <button class="dlove-tab-btn" data-tab="tab-export">📦 6. Xuất bản & Giao khách</button>
@@ -324,12 +492,12 @@
             </div>
           </div>
 
-          <!-- TAB 3: SPHERE 12 IMAGES -->
+          <!-- TAB 3: SPHERE IMAGES (THÊM / XOÁ LINH HOẠT) -->
           <div class="dlove-tab-pane" id="tab-sphere">
             <div class="dlove-switch-row">
               <div class="dlove-switch-info">
-                <h4>Quả cầu 12 ảnh kỷ niệm xoay 360 độ</h4>
-                <p>Khách hàng có thể xoay 3D xem toàn bộ 12 bức ảnh kỷ niệm</p>
+                <h4>Quả cầu ảnh kỷ niệm xoay 360 độ</h4>
+                <p>Khách hàng có thể xoay 3D xem toàn bộ ảnh kỷ niệm</p>
               </div>
               <label class="dlove-switch">
                 <input type="checkbox" id="cfg-enableSphere">
@@ -340,7 +508,7 @@
             <div class="dlove-switch-row">
               <div class="dlove-switch-info">
                 <h4>Hiệu ứng ảnh bay lơ lửng & mưa ảnh</h4>
-                <p>Sau khi vỡ quả cầu, 12 bức ảnh sẽ bay lượn lãng mạn trong không gian 3D</p>
+                <p>Sau khi vỡ quả cầu, các bức ảnh sẽ bay lượn lãng mạn trong không gian 3D</p>
               </div>
               <label class="dlove-switch">
                 <input type="checkbox" id="cfg-enableSphereFlyingImages">
@@ -348,22 +516,33 @@
               </label>
             </div>
 
-            <!-- Bulk Upload Area -->
-            <div style="background:rgba(255,107,139,0.1); border:1px dashed var(--ed-primary); border-radius:14px; padding:16px; margin:16px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-              <div>
-                <h4 style="margin:0 0 4px 0; font-size:14px; color:#fff;">⚡ Tải nhanh toàn bộ ảnh cho quả cầu</h4>
-                <p style="margin:0; font-size:12px; color:var(--ed-text-muted);">Khách gửi ảnh, bạn chỉ cần chọn cùng lúc từ 1 đến 12 file ảnh!</p>
+            <!-- Toolbar & Controls -->
+            <div style="background:rgba(255,107,139,0.08); border:1px solid rgba(255,133,162,0.3); border-radius:14px; padding:14px 18px; margin:16px 0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <h4 style="margin:0; font-size:14px; color:#fff;">📸 Quản lý ảnh quả cầu 3D</h4>
+                  <span class="dlove-count-badge" id="sphere-count-badge">0 ảnh</span>
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                  <label class="dlove-btn dlove-btn-primary" style="padding:6px 12px; font-size:12px; cursor:pointer;">
+                    ➕ Thêm ảnh từ máy
+                    <input type="file" id="input-sphere-add" accept="image/*" multiple style="display:none;">
+                  </label>
+                  <button type="button" class="dlove-btn dlove-btn-outline" id="btn-reset-sphere-default" style="padding:6px 12px; font-size:12px;">
+                    🔄 12 ảnh mẫu
+                  </button>
+                  <button type="button" class="dlove-btn dlove-btn-outline" id="btn-clear-sphere" style="padding:6px 10px; font-size:12px; color:#ff85a2; border-color:#ff85a2;">
+                    🗑️ Xoá tất cả
+                  </button>
+                </div>
               </div>
-              <label class="dlove-btn dlove-btn-primary" style="cursor:pointer;">
-                📁 Chọn 1 - 12 ảnh cùng lúc
-                <input type="file" id="input-sphere-bulk" accept="image/*" multiple style="display:none;">
-              </label>
+              <p style="margin:0; font-size:12px; color:var(--ed-text-muted); line-height:1.4;">
+                💡 <b>Mẹo cho Shop:</b> Bạn có thể chọn bao nhiêu ảnh cũng được (4, 6, 8, 12, 16 ảnh...). Bấm dấu <b>&times; (Xóa)</b> trên từng ảnh để bớt ảnh, hoặc bấm <b>➕ Thêm ảnh</b> để bổ sung ảnh khách gửi!
+              </p>
             </div>
 
-            <!-- 12-Photos Grid -->
-            <div class="dlove-sphere-grid" id="dlove-sphere-grid">
-              <!-- Will be rendered dynamically via JS -->
-            </div>
+            <!-- Photos Grid (Rendered dynamically) -->
+            <div class="dlove-sphere-grid" id="dlove-sphere-grid"></div>
 
             <div class="dlove-actions-row" style="margin-top:18px;">
               <button type="button" class="dlove-btn-preview-scene" data-scene="images">
@@ -496,6 +675,72 @@
 
           <!-- TAB 6: EXPORT & DELIVER -->
           <div class="dlove-tab-pane" id="tab-export">
+
+            <!-- 1. TẠO LINK RIÊNG BIỆT CHO TỪNG KHÁCH (BÁN NHIỀU NGƯỜI CÙNG LÚC) -->
+            <div class="dlove-cloud-card">
+              <div class="dlove-cloud-card-header">
+                <h3>🌐 TẠO LINK RIÊNG BIỆT CHO TỪNG KHÁCH HÀNG</h3>
+                <span class="dlove-badge-shop" style="background:#27ae60;">Bán đồng thời nhiều khách</span>
+              </div>
+              <p style="font-size:12.5px; color:var(--ed-text-muted); margin-bottom:14px; line-height:1.4;">
+                Mỗi khách hàng sẽ có một link riêng biệt (VD: <code style="color:#ff85a2;">?id=lan-anh</code>). Bạn có thể bán cho hàng chục khách cùng lúc mà <b>không bao giờ bị trùng lặp hay đè dữ liệu</b>!
+              </p>
+
+              <div class="dlove-form-grid-2 dlove-form-grid">
+                <div class="dlove-form-group">
+                  <label class="dlove-label">
+                    <span>Mã khách hàng / Tên link (Slug)</span>
+                    <button type="button" id="btn-random-slug" style="background:none; border:none; color:var(--ed-accent); cursor:pointer; font-size:11.5px;">🎲 Tạo ngẫu nhiên</button>
+                  </label>
+                  <input type="text" id="cfg-customer-slug" class="dlove-input" placeholder="VD: lan-anh, thao-vy, 2010">
+                </div>
+
+                <div class="dlove-form-group">
+                  <label class="dlove-label">
+                    <span>GitHub Personal Token (Shop Token)</span>
+                    <span class="dlove-hint">Tự động đồng bộ lên GitHub</span>
+                  </label>
+                  <input type="password" id="cfg-github-token" class="dlove-input" placeholder="gho_...">
+                </div>
+              </div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" class="dlove-btn dlove-btn-primary" id="btn-publish-customer-link" style="padding:10px 22px; font-size:13.5px;">
+                  🚀 Đăng tải & Tạo Link Riêng Cho Khách
+                </button>
+              </div>
+
+              <!-- Hộp kết quả link sau khi tạo -->
+              <div class="dlove-link-result-box" id="customer-link-result" style="display:none;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <span style="font-size:13px; font-weight:700; color:#2ecc71;">🎉 Đã tạo link thành công cho khách!</span>
+                </div>
+                <div class="dlove-link-url-row">
+                  <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
+                  <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-customer-link" style="padding:8px 14px; font-size:12px;">
+                    📋 Sao chép
+                  </button>
+                  <a href="" target="_blank" id="btn-open-customer-link" class="dlove-btn dlove-btn-outline" style="padding:8px 14px; font-size:12px;">
+                    👁️ Mở link
+                  </a>
+                </div>
+                <div id="customer-qr-box" style="margin-top:8px; display:flex; align-items:center; gap:14px;">
+                  <img id="customer-qr-img" src="" alt="QR Code" style="width:84px; height:84px; border-radius:8px; background:#fff; padding:4px;">
+                  <div style="font-size:12px; color:var(--ed-text-muted);">
+                    <b style="color:#fff;">Mã QR gửi khách:</b><br>
+                    Khách có thể dùng camera điện thoại hoặc Zalo để quét mã và mở quà trực tiếp!
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lịch sử các link khách hàng đã tạo -->
+              <div style="margin-top:18px;">
+                <h4 style="font-size:13px; color:#fff; margin-bottom:8px;">📋 Danh sách link khách hàng đã tạo:</h4>
+                <div class="dlove-orders-list" id="customer-orders-list"></div>
+              </div>
+            </div>
+
+            <!-- 2. XUẤT FILE HTML GỬI KHÁCH -->
             <div class="dlove-delivery-card">
               <div>
                 <h3>📥 Xuất file HTML gửi cho khách (Khuyên dùng)</h3>
@@ -506,6 +751,7 @@
               </button>
             </div>
 
+            <!-- 3. LƯU & NẠP FILE JSON -->
             <div class="dlove-delivery-card">
               <div>
                 <h3>💾 Lưu cấu hình đơn hàng (File .json)</h3>
@@ -522,6 +768,7 @@
               </div>
             </div>
 
+            <!-- 4. KHÔI PHỤC GỐC -->
             <div class="dlove-delivery-card">
               <div>
                 <h3>🔄 Khôi phục về mẫu gốc ban đầu</h3>
@@ -559,7 +806,7 @@
     const backdrop = document.getElementById('dlove-modal-backdrop');
     const closeBtn = document.getElementById('dlove-btn-close');
 
-    // Mở / Đóng modal (chỉ khi có triggerBtn và backdrop trên trang index)
+    // Mở / Đóng modal
     if (triggerBtn && backdrop) {
       triggerBtn.addEventListener('click', () => {
         syncConfigToUI();
@@ -576,7 +823,6 @@
         if (e.target === backdrop) backdrop.classList.remove('is-open');
       });
 
-      // Phím tắt ESC để đóng, F2 để bật/tắt editor
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && backdrop.classList.contains('is-open')) {
           backdrop.classList.remove('is-open');
@@ -588,7 +834,7 @@
       });
     }
 
-    // Chuyển Tab (áp dụng cho cả modal trên index.html lẫn trang editor.html)
+    // Chuyển Tab
     const rootScope = backdrop || document;
     const tabBtns = rootScope.querySelectorAll('.dlove-tab-btn');
     const tabPanes = rootScope.querySelectorAll('.dlove-tab-pane');
@@ -647,23 +893,47 @@
       });
     }
 
-    // Upload Bulk 12 ảnh kỷ niệm (Sphere)
-    const bulkSphereInput = document.getElementById('input-sphere-bulk');
-    if (bulkSphereInput) {
-      bulkSphereInput.addEventListener('change', async (e) => {
+    // Nút Thêm ảnh từ thanh công cụ (Toolbar)
+    const sphereAddInput = document.getElementById('input-sphere-add');
+    if (sphereAddInput) {
+      sphereAddInput.addEventListener('change', async (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
-        showToast(`⏳ Đang xử lý & tối ưu ${files.length} ảnh...`);
+        showToast(`⏳ Đang thêm ${files.length} ảnh mới...`);
         try {
-          for (let i = 0; i < Math.min(files.length, 12); i++) {
-            const base64 = await compressImageFile(files[i], 600, 0.82);
-            currentConfig.sphereImages[i] = base64;
+          for (const file of files) {
+            const base64 = await compressImageFile(file, 600, 0.82);
+            currentConfig.sphereImages.push(base64);
           }
           saveCurrentConfig();
           renderSphereGrid();
-          showToast(`🎉 Đã tải lên ${Math.min(files.length, 12)} ảnh vào quả cầu 3D!`);
+          showToast(`🎉 Đã thêm ${files.length} ảnh! Hiện có ${currentConfig.sphereImages.length} ảnh.`);
         } catch (err) {
-          alert('Lỗi nén ảnh: ' + err.message);
+          alert('Lỗi thêm ảnh: ' + err.message);
+        }
+      });
+    }
+
+    // Nút Khôi phục 12 ảnh mẫu
+    const resetSphereDefaultBtn = document.getElementById('btn-reset-sphere-default');
+    if (resetSphereDefaultBtn) {
+      resetSphereDefaultBtn.addEventListener('click', () => {
+        currentConfig.sphereImages = [...DEFAULT_CONFIG.sphereImages];
+        saveCurrentConfig();
+        renderSphereGrid();
+        showToast('🔄 Đã khôi phục 12 ảnh kỷ niệm mẫu!');
+      });
+    }
+
+    // Nút Xoá tất cả ảnh
+    const clearSphereBtn = document.getElementById('btn-clear-sphere');
+    if (clearSphereBtn) {
+      clearSphereBtn.addEventListener('click', () => {
+        if (confirm('Bạn có muốn xoá tất cả ảnh trong quả cầu để tải ảnh mới không?')) {
+          currentConfig.sphereImages = [];
+          saveCurrentConfig();
+          renderSphereGrid();
+          showToast('🗑️ Đã xoá toàn bộ ảnh. Hãy bấm "Thêm ảnh mới" để nạp ảnh khách!');
         }
       });
     }
@@ -751,6 +1021,34 @@
         window.location.href = `index.html?preview=1&scene=${scene}`;
       });
     });
+
+    // Cloud Publisher events
+    const randomSlugBtn = document.getElementById('btn-random-slug');
+    if (randomSlugBtn) {
+      randomSlugBtn.addEventListener('click', () => {
+        const rand = 'khach-' + Math.random().toString(36).substring(2, 7);
+        const slugInput = document.getElementById('cfg-customer-slug');
+        if (slugInput) slugInput.value = rand;
+      });
+    }
+
+    const publishLinkBtn = document.getElementById('btn-publish-customer-link');
+    if (publishLinkBtn) {
+      publishLinkBtn.addEventListener('click', () => {
+        publishCustomerCard();
+      });
+    }
+
+    const copyCustomerLinkBtn = document.getElementById('btn-copy-customer-link');
+    if (copyCustomerLinkBtn) {
+      copyCustomerLinkBtn.addEventListener('click', () => {
+        const urlInput = document.getElementById('customer-link-url');
+        if (urlInput && urlInput.value) {
+          navigator.clipboard.writeText(urlInput.value);
+          showToast('📋 Đã sao chép link gửi khách thành công!');
+        }
+      });
+    }
 
     // Nút Lưu cấu hình
     const saveBtn = document.getElementById('btn-apply-save');
@@ -919,7 +1217,14 @@
     const particleImg = document.getElementById('preview-particle-img');
     if (particleImg) particleImg.src = currentConfig.particleImage || 'assets/uploads/particle.webp';
 
+    // GitHub Token input prefill
+    const tokenInput = document.getElementById('cfg-github-token');
+    if (tokenInput) {
+      tokenInput.value = localStorage.getItem('DLOVE_GITHUB_TOKEN') || DEFAULT_GITHUB_TOKEN;
+    }
+
     renderSphereGrid();
+    renderOrdersHistory();
 
     // Volume & Music
     const volumeRange = document.getElementById('cfg-bgVolume');
@@ -931,19 +1236,27 @@
     }
   }
 
-  // Render lưới 12 ảnh quả cầu
+  // Render lưới ảnh quả cầu (hỗ trợ thêm / xoá linh hoạt bất kỳ số lượng ảnh nào)
   function renderSphereGrid() {
     const grid = document.getElementById('dlove-sphere-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
     const images = currentConfig.sphereImages || [];
-    for (let i = 0; i < 12; i++) {
-      const imgSrc = images[i] || `assets/uploads/sphere_${i + 1}.webp`;
+
+    // Cập nhật huy hiệu đếm số lượng ảnh
+    const countBadges = document.querySelectorAll('#sphere-count-badge, .sphere-count-badge');
+    countBadges.forEach(badge => {
+      badge.textContent = `${images.length} ảnh`;
+    });
+
+    // Render từng ảnh trong danh sách
+    images.forEach((imgSrc, i) => {
       const item = document.createElement('div');
       item.className = 'dlove-sphere-item';
       item.innerHTML = `
         <span class="dlove-sphere-badge">Ảnh #${i + 1}</span>
+        <button type="button" class="dlove-sphere-del-btn" title="Xoá ảnh #${i + 1}" data-index="${i}">&times;</button>
         <img class="dlove-sphere-thumb" src="${imgSrc}" alt="Ảnh ${i + 1}">
         <label class="dlove-sphere-upload-btn">
           Đổi ảnh
@@ -951,6 +1264,21 @@
         </label>
       `;
 
+      // Sự kiện xoá ảnh
+      const delBtn = item.querySelector('.dlove-sphere-del-btn');
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentConfig.sphereImages.length <= 1) {
+          alert('Quả cầu cần giữ ít nhất 1 ảnh!');
+          return;
+        }
+        currentConfig.sphereImages.splice(i, 1);
+        saveCurrentConfig();
+        renderSphereGrid();
+        showToast(`🗑️ Đã xoá ảnh #${i + 1}! Hiện còn ${currentConfig.sphereImages.length} ảnh.`);
+      });
+
+      // Sự kiện thay thế ảnh
       const input = item.querySelector('.input-sphere-single');
       input.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -968,7 +1296,34 @@
       });
 
       grid.appendChild(item);
-    }
+    });
+
+    // Thẻ "➕ Thêm ảnh mới" ở cuối lưới
+    const addItem = document.createElement('label');
+    addItem.className = 'dlove-sphere-add-item';
+    addItem.innerHTML = `
+      <span style="font-size:26px; line-height:1;">➕</span>
+      <span style="font-size:12px; font-weight:600; color:var(--ed-accent);">Thêm ảnh mới</span>
+      <input type="file" accept="image/*" multiple id="input-sphere-add-grid" style="display:none;">
+    `;
+    const addInput = addItem.querySelector('#input-sphere-add-grid');
+    addInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+      showToast(`⏳ Đang xử lý ${files.length} ảnh mới...`);
+      try {
+        for (const file of files) {
+          const base64 = await compressImageFile(file, 600, 0.82);
+          currentConfig.sphereImages.push(base64);
+        }
+        saveCurrentConfig();
+        renderSphereGrid();
+        showToast(`🎉 Đã thêm ${files.length} ảnh! Tổng cộng hiện có: ${currentConfig.sphereImages.length} ảnh.`);
+      } catch (err) {
+        alert('Lỗi thêm ảnh: ' + err.message);
+      }
+    });
+    grid.appendChild(addItem);
   }
 
   // Áp dụng Preset
@@ -998,15 +1353,12 @@
   async function exportCustomerHTML() {
     showToast('⏳ Đang đóng gói file quà tặng gửi khách...');
     try {
-      // 1. Tải source code index.html hiện tại
       const resp = await fetch('index.html');
       let html = await resp.text();
 
-      // 2. Chuẩn bị config hoàn chỉnh của khách
       const customerConfig = JSON.parse(JSON.stringify(currentConfig));
       customerConfig.enableWebsiteInfo = true;
 
-      // 3. Thay thế DEFAULT_APP_CONFIG trong mã nguồn
       const configJsonStr = JSON.stringify(customerConfig, null, 4);
       const configRegex = /window\.DEFAULT_APP_CONFIG\s*=\s*\{[\s\S]*?\};/;
       if (configRegex.test(html)) {
@@ -1015,17 +1367,14 @@
         html = html.replace('window.APP_CONFIG = window.DEFAULT_APP_CONFIG;', `window.DEFAULT_APP_CONFIG = ${configJsonStr};\nwindow.APP_CONFIG = window.DEFAULT_APP_CONFIG;`);
       }
 
-      // 4. Loại bỏ thanh công cụ và script chỉnh sửa để khách không thấy nút Editor của shop
       html = html.replace(/<!-- EDITOR_INJECT_START -->[\s\S]*?<!-- EDITOR_INJECT_END -->/g, '');
       html = html.replace(/<link rel="stylesheet" href="assets\/editor\.css">/g, '');
       html = html.replace(/<script src="assets\/editor\.js"><\/script>/g, '');
 
-      // 5. Cập nhật <title>
       if (customerConfig.appTitle) {
         html = html.replace(/<title>.*?<\/title>/, `<title>${customerConfig.appTitle}</title>`);
       }
 
-      // 6. Tạo file blob và kích hoạt download
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1067,6 +1416,10 @@
     applyPreset,
     exportCustomerHTML,
     exportConfigFileJSON,
+    publishCustomerCard,
+    loadCustomerFromCloud,
+    renderSphereGrid,
+    showToast,
     syncConfigToUI
   };
 

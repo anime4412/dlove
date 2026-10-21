@@ -612,31 +612,63 @@
     "bgVolume": 0.55
 };
 
-    // Tự động hợp nhất cấu hình tùy chỉnh từ LocalStorage hoặc URL (hỗ trợ chỉnh sửa và chia sẻ)
-    (function () {
+    // Tự động tải cấu hình riêng của từng khách hàng nếu có ?id= hoặc ?card=
+    window.APP_CONFIG_PROMISE = (async function () {
         var activeConfig = window.DEFAULT_APP_CONFIG;
         try {
             var urlParams = new URLSearchParams(window.location.search);
+            var cardId = urlParams.get('id') || urlParams.get('c') || urlParams.get('card');
             var cfgParam = urlParams.get('cfg') || urlParams.get('config');
-            if (cfgParam) {
-                var decoded = JSON.parse(decodeURIComponent(escape(atob(cfgParam))));
-                if (decoded && typeof decoded === 'object') {
-                    activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, decoded);
-                }
-            } else {
-                var stored = localStorage.getItem('DLOVE_CUSTOM_CONFIG');
-                if (stored) {
-                    var parsed = JSON.parse(stored);
-                    if (parsed && typeof parsed === 'object') {
-                        activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, parsed);
+
+            // 1. Nếu có ID khách hàng (?id=lan-anh) -> Tải dữ liệu riêng biệt từ Cloud
+            if (cardId) {
+                var urls = [
+                    'https://raw.githubusercontent.com/anime4412/dlove/main/data/' + cardId + '.json',
+                    'data/' + cardId + '.json'
+                ];
+                for (var i = 0; i < urls.length; i++) {
+                    try {
+                        var resp = await fetch(urls[i] + '?t=' + Date.now());
+                        if (resp.ok) {
+                            var remoteJson = await resp.json();
+                            if (remoteJson && typeof remoteJson === 'object') {
+                                activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, remoteJson);
+                                window.APP_CONFIG = activeConfig;
+                                window.__IS_CUSTOMER_VIEW = true; // Đánh dấu là link khách xem
+                                return activeConfig;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Lỗi tải remote data:', err);
                     }
+                }
+            }
+
+            // 2. Nếu có config nhúng qua URL (?cfg=base64)
+            if (cfgParam) {
+                try {
+                    var decoded = JSON.parse(decodeURIComponent(escape(atob(cfgParam))));
+                    if (decoded && typeof decoded === 'object') {
+                        activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, decoded);
+                        window.APP_CONFIG = activeConfig;
+                        return activeConfig;
+                    }
+                } catch (e) {}
+            }
+
+            // 3. Nếu là shop đang chỉnh sửa bản nháp trong trình duyệt (không có ?id= của khách)
+            var stored = localStorage.getItem('DLOVE_CUSTOM_CONFIG');
+            if (stored) {
+                var parsed = JSON.parse(stored);
+                if (parsed && typeof parsed === 'object') {
+                    activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, parsed);
                 }
             }
         } catch (e) {
             console.warn('Lỗi load active config:', e);
         }
         window.APP_CONFIG = activeConfig;
-        window.APP_CONFIG_PROMISE = Promise.resolve(activeConfig);
+        return activeConfig;
     })();
 </script>
 

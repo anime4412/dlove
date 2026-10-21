@@ -264,11 +264,11 @@
                     </div>
                 </div>
 
-                <!-- Tab 3: Sphere 12 Images -->
+                <!-- Tab 3: Sphere Images -->
                 <div class="dlove-tab-pane" id="tab-sphere">
                     <div class="dlove-switch-row">
                         <div class="dlove-switch-info">
-                            <h4>Quả cầu 12 ảnh kỷ niệm 3D</h4>
+                            <h4>Quả cầu ảnh kỷ niệm 3D</h4>
                             <p>Xoay tròn 360 độ</p>
                         </div>
                         <label class="dlove-switch">
@@ -288,19 +288,32 @@
                         </label>
                     </div>
 
-                    <!-- Bulk Upload -->
-                    <div style="background:rgba(255,107,139,0.1); border:1px dashed var(--ed-primary); border-radius:12px; padding:12px; margin:14px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                        <div>
-                            <h4 style="margin:0 0 2px 0; font-size:13.5px; color:#fff;">⚡ Tải nhanh 1-12 ảnh</h4>
-                            <p style="margin:0; font-size:11.5px; color:var(--ed-text-muted);">Khách gửi ảnh, chọn 1 lần là xong!</p>
+                    <!-- Toolbar & Controls -->
+                    <div style="background:rgba(255,107,139,0.08); border:1px solid rgba(255,133,162,0.3); border-radius:12px; padding:12px 16px; margin:14px 0;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <h4 style="margin:0; font-size:13.5px; color:#fff;">📸 Quản lý ảnh quả cầu</h4>
+                                <span class="dlove-count-badge" id="sphere-count-badge">0 ảnh</span>
+                            </div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <label class="dlove-btn dlove-btn-primary" style="padding:5px 10px; font-size:11.5px; cursor:pointer;">
+                                    ➕ Thêm ảnh
+                                    <input type="file" id="input-sphere-add" accept="image/*" multiple style="display:none;">
+                                </label>
+                                <button type="button" class="dlove-btn dlove-btn-outline" id="btn-reset-sphere-default" style="padding:5px 10px; font-size:11.5px;">
+                                    🔄 12 ảnh mẫu
+                                </button>
+                                <button type="button" class="dlove-btn dlove-btn-outline" id="btn-clear-sphere" style="padding:5px 8px; font-size:11.5px; color:#ff85a2; border-color:#ff85a2;">
+                                    🗑️ Xoá hết
+                                </button>
+                            </div>
                         </div>
-                        <label class="dlove-btn dlove-btn-primary" style="padding:6px 12px; font-size:12px; cursor:pointer;">
-                            📁 Chọn nhiều ảnh
-                            <input type="file" id="input-sphere-bulk" accept="image/*" multiple style="display:none;">
-                        </label>
+                        <p style="margin:0; font-size:11.5px; color:var(--ed-text-muted);">
+                            💡 Bạn có thể chọn bao nhiêu ảnh cũng được. Bấm dấu <b>&times; (Xóa)</b> để bỏ bớt ảnh, hoặc bấm <b>➕ Thêm ảnh</b> để nạp thêm!
+                        </p>
                     </div>
 
-                    <!-- Grid 12 Photos -->
+                    <!-- Grid Photos -->
                     <div class="dlove-sphere-grid" id="dlove-sphere-grid"></div>
 
                     <div class="dlove-actions-row" style="margin-top:16px;">
@@ -412,6 +425,72 @@
 
                 <!-- Tab 6: Export & Deliver -->
                 <div class="dlove-tab-pane" id="tab-export">
+
+                    <!-- 1. TẠO LINK RIÊNG BIỆT CHO TỪNG KHÁCH (BÁN NHIỀU NGƯỜI CÙNG LÚC) -->
+                    <div class="dlove-cloud-card">
+                        <div class="dlove-cloud-card-header">
+                            <h3>🌐 TẠO LINK RIÊNG BIỆT CHO TỪNG KHÁCH HÀNG</h3>
+                            <span class="dlove-badge-shop" style="background:#27ae60;">Bán đồng thời nhiều khách</span>
+                        </div>
+                        <p style="font-size:12px; color:var(--ed-text-muted); margin-bottom:12px; line-height:1.4;">
+                            Mỗi khách hàng sẽ có một link riêng (VD: <code style="color:#ff85a2;">?id=lan-anh</code>). Bạn có thể bán cho hàng chục khách cùng lúc mà <b>không bao giờ bị trùng lặp hay đè dữ liệu</b>!
+                        </p>
+
+                        <div class="dlove-form-grid-2 dlove-form-grid">
+                            <div class="dlove-form-group">
+                                <label class="dlove-label">
+                                    <span>Mã khách hàng / Tên link (Slug)</span>
+                                    <button type="button" id="btn-random-slug" style="background:none; border:none; color:var(--ed-accent); cursor:pointer; font-size:11.5px;">🎲 Tạo ngẫu nhiên</button>
+                                </label>
+                                <input type="text" id="cfg-customer-slug" class="dlove-input" placeholder="VD: lan-anh, thao-vy, 2010">
+                            </div>
+
+                            <div class="dlove-form-group">
+                                <label class="dlove-label">
+                                    <span>GitHub Token</span>
+                                    <span class="dlove-hint">Tự động đồng bộ</span>
+                                </label>
+                                <input type="password" id="cfg-github-token" class="dlove-input" placeholder="gho_...">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;">
+                            <button type="button" class="dlove-btn dlove-btn-primary" id="btn-publish-customer-link" style="padding:9px 18px; font-size:13px;">
+                                🚀 Đăng tải & Tạo Link Riêng Cho Khách
+                            </button>
+                        </div>
+
+                        <!-- Hộp kết quả link sau khi tạo -->
+                        <div class="dlove-link-result-box" id="customer-link-result" style="display:none;">
+                            <div style="display:flex; align-items:center; justify-content:space-between;">
+                                <span style="font-size:12.5px; font-weight:700; color:#2ecc71;">🎉 Đã tạo link thành công cho khách!</span>
+                            </div>
+                            <div class="dlove-link-url-row">
+                                <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
+                                <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-customer-link" style="padding:6px 12px; font-size:12px;">
+                                    📋 Copy
+                                </button>
+                                <a href="" target="_blank" id="btn-open-customer-link" class="dlove-btn dlove-btn-outline" style="padding:6px 12px; font-size:12px;">
+                                    👁️ Mở
+                                </a>
+                            </div>
+                            <div id="customer-qr-box" style="margin-top:6px; display:flex; align-items:center; gap:12px;">
+                                <img id="customer-qr-img" src="" alt="QR Code" style="width:72px; height:72px; border-radius:6px; background:#fff; padding:3px;">
+                                <div style="font-size:11.5px; color:var(--ed-text-muted);">
+                                    <b style="color:#fff;">Mã QR gửi khách:</b><br>
+                                    Khách có thể dùng camera điện thoại hoặc Zalo để quét mã mở quà!
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lịch sử các link khách hàng đã tạo -->
+                        <div style="margin-top:16px;">
+                            <h4 style="font-size:12.5px; color:#fff; margin-bottom:8px;">📋 Danh sách link khách hàng đã tạo:</h4>
+                            <div class="dlove-orders-list" id="customer-orders-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- 2. XUẤT FILE HTML GỬI KHÁCH -->
                     <div class="dlove-delivery-card">
                         <div>
                             <h3>📥 Xuất file HTML gửi khách</h3>

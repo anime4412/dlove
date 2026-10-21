@@ -444,12 +444,70 @@ input:checked + .dlove-slider:before {
   align-items: center;
   gap: 6px;
   position: relative;
-  transition: transform 0.2s;
+  transition: transform 0.2s, border-color 0.2s;
 }
 
 .dlove-sphere-item:hover {
   transform: translateY(-2px);
   border-color: var(--ed-primary);
+}
+
+.dlove-sphere-del-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  background: rgba(220, 53, 69, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.dlove-sphere-del-btn:hover {
+  background: #e74c3c;
+  transform: scale(1.15);
+}
+
+.dlove-sphere-add-item {
+  background: rgba(255, 107, 139, 0.06);
+  border: 2px dashed rgba(255, 133, 162, 0.4);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  aspect-ratio: 1;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.dlove-sphere-add-item:hover {
+  border-color: var(--ed-primary);
+  background: rgba(255, 107, 139, 0.15);
+  transform: translateY(-2px);
+}
+
+.dlove-count-badge {
+  background: linear-gradient(135deg, #ff6b8b, #ff4772);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .dlove-sphere-thumb {
@@ -631,4 +689,97 @@ input:checked + .dlove-slider:before {
 .dlove-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   CUSTOMER CLOUD PUBLISHER & MULTI-CLIENT ORDER SYSTEM
+   ========================================================================== */
+.dlove-cloud-card {
+  background: linear-gradient(135deg, rgba(45, 18, 48, 0.95), rgba(28, 12, 30, 0.98));
+  border: 1px solid rgba(255, 107, 139, 0.4);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.dlove-cloud-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.dlove-cloud-card-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dlove-link-result-box {
+  background: rgba(15, 7, 16, 0.9);
+  border: 1px solid var(--ed-primary);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dlove-link-url-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dlove-link-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #a8ffb2;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+/* Orders History List */
+.dlove-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.dlove-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.dlove-order-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dlove-order-name {
+  font-weight: 600;
+  color: #fff;
+}
+
+.dlove-order-date {
+  font-size: 11px;
+  color: var(--ed-text-muted);
 }
