@@ -269,6 +269,9 @@
       });
 
       if (!putResp.ok) {
+        if (putResp.status === 401) {
+          throw new Error('GitHub Token chưa đúng hoặc đã hết hạn.\n\n👉 Bạn hãy vào https://github.com/settings/tokens tạo một Token mới (chọn quyền "repo"), sau đó dán vào ô "GitHub Token" là đăng tải được ngay!');
+        }
         const errData = await putResp.json();
         throw new Error(errData.message || 'Lỗi từ GitHub API');
       }
@@ -698,9 +701,10 @@
                 <div class="dlove-form-group">
                   <label class="dlove-label">
                     <span>GitHub Personal Token (Shop Token)</span>
-                    <span class="dlove-hint">Tự động đồng bộ lên GitHub</span>
+                    <a href="https://github.com/settings/tokens/new?scopes=repo&description=DLove%20Publisher" target="_blank" style="color:var(--ed-accent); font-size:11px; text-decoration:none;">🔑 Tạo Token (1 lần)</a>
                   </label>
                   <input type="password" id="cfg-github-token" class="dlove-input" placeholder="gho_...">
+                  <span class="dlove-hint" style="display:block; margin-top:4px;">Token lưu trên máy của bạn để tự động tạo link vào GitHub Pages.</span>
                 </div>
               </div>
 
