@@ -464,18 +464,39 @@
                         <!-- Hộp kết quả link sau khi tạo -->
                         <div class="dlove-link-result-box" id="customer-link-result" style="display:none;">
                             <div style="display:flex; align-items:center; justify-content:space-between;">
-                                <span style="font-size:12.5px; font-weight:700; color:#2ecc71;">🎉 Đã tạo link thành công cho khách!</span>
+                                <span style="font-size:13px; font-weight:700; color:#2ecc71;">🎉 Đã xuất link thành công cho khách!</span>
                             </div>
-                            <div class="dlove-link-url-row">
-                                <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
-                                <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-customer-link" style="padding:6px 12px; font-size:12px;">
-                                    📋 Copy
-                                </button>
-                                <a href="" target="_blank" id="btn-open-customer-link" class="dlove-btn dlove-btn-outline" style="padding:6px 12px; font-size:12px;">
-                                    👁️ Mở
-                                </a>
+
+                            <!-- 1. Link rút gọn ngắn đẹp -->
+                            <div class="dlove-shortlink-card">
+                                <div class="dlove-shortlink-title">
+                                    <h4>⚡ LINK RÚT GỌN (Gửi Zalo / Messenger):</h4>
+                                    <a id="btn-claim-tinyurl" href="" target="_blank" class="dlove-badge-tinyurl" style="text-decoration:none;">🔗 Đăng ký đuôi TinyURL này</a>
+                                </div>
+                                <div class="dlove-link-url-row">
+                                    <input type="text" id="customer-short-url" class="dlove-link-input" style="color:#ff85a2; font-weight:700;" readonly>
+                                    <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-short-link" style="padding:6px 12px; font-size:12px;">
+                                        📋 Copy link ngắn
+                                    </button>
+                                    <a href="" target="_blank" id="btn-open-short-link" class="dlove-btn dlove-btn-outline" style="padding:6px 12px; font-size:12px;">
+                                        👁️ Mở
+                                    </a>
+                                </div>
                             </div>
-                            <div id="customer-qr-box" style="margin-top:6px; display:flex; align-items:center; gap:12px;">
+
+                            <!-- 2. Link gốc -->
+                            <div style="margin-top:6px;">
+                                <div style="font-size:11px; color:var(--ed-text-muted); margin-bottom:3px;">Link gốc GitHub Pages:</div>
+                                <div class="dlove-link-url-row">
+                                    <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
+                                    <button type="button" class="dlove-btn dlove-btn-outline" id="btn-copy-customer-link" style="padding:6px 10px; font-size:11.5px;">
+                                        📋 Copy link gốc
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 3. Mã QR -->
+                            <div id="customer-qr-box" style="margin-top:8px; display:flex; align-items:center; gap:12px;">
                                 <img id="customer-qr-img" src="" alt="QR Code" style="width:72px; height:72px; border-radius:6px; background:#fff; padding:3px;">
                                 <div style="font-size:11.5px; color:var(--ed-text-muted);">
                                     <b style="color:#fff;">Mã QR gửi khách:</b><br>

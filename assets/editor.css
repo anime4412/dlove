@@ -783,3 +783,37 @@ input:checked + .dlove-slider:before {
   font-size: 11px;
   color: var(--ed-text-muted);
 }
+
+/* Short Link / TinyURL Card */
+.dlove-shortlink-card {
+  background: rgba(255, 107, 139, 0.08);
+  border: 1px dashed var(--ed-primary);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+.dlove-shortlink-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dlove-shortlink-title h4 {
+  margin: 0;
+  font-size: 13.5px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dlove-badge-tinyurl {
+  background: linear-gradient(135deg, #0984e3, #74b9ff);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}

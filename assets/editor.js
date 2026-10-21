@@ -152,12 +152,13 @@
     }
   }
 
-  function saveOrderToHistory(slug, title, url) {
+  function saveOrderToHistory(slug, title, url, shortUrl) {
     const list = getOrdersHistory().filter(item => item.slug !== slug);
     list.unshift({
       slug,
       title: title || slug,
       url,
+      shortUrl: shortUrl || url,
       createdAt: new Date().toLocaleDateString('vi-VN') + ' ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
     });
     localStorage.setItem('DLOVE_ORDERS_HISTORY', JSON.stringify(list.slice(0, 50)));
@@ -176,15 +177,15 @@
         <div class="dlove-order-info">
           <div>
             <div class="dlove-order-name">👤 ${item.slug} <span style="font-size:11px; opacity:0.8;">(${item.title})</span></div>
-            <div class="dlove-order-date">🕒 ${item.createdAt}</div>
+            <div class="dlove-order-date">🔗 <span style="color:#ff85a2;">${item.shortUrl || item.url}</span> · 🕒 ${item.createdAt}</div>
           </div>
         </div>
         <div style="display:flex; gap:6px;">
-          <button type="button" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;" onclick="navigator.clipboard.writeText('${item.url}'); window.DLoveEditor.showToast('📋 Đã sao chép link!');">
+          <button type="button" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;" onclick="navigator.clipboard.writeText('${item.shortUrl || item.url}'); window.DLoveEditor.showToast('📋 Đã sao chép link!');">
             📋 Copy
           </button>
-          <a href="${item.url}" target="_blank" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;">
-            👁️ Xem
+          <a href="${item.shortUrl || item.url}" target="_blank" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px;">
+            👁️ Mở
           </a>
           <button type="button" class="dlove-btn dlove-btn-outline" style="padding:4px 8px; font-size:11px; color:#ff85a2;" onclick="window.DLoveEditor.loadCustomerFromCloud('${item.slug}')">
             ✏️ Sửa
@@ -277,20 +278,29 @@
       }
 
       const customerUrl = `https://anime4412.github.io/dlove/?id=${slug}`;
+      const defaultAlias = `tang-${slug}`.substring(0, 30);
+      const tinyUrlTarget = `https://tinyurl.com/${defaultAlias}`;
+      const tinyUrlClaimUrl = `https://tinyurl.com/create.php?url=${encodeURIComponent(customerUrl)}&alias=${encodeURIComponent(defaultAlias)}`;
 
       const resultBox = document.getElementById('customer-link-result');
       const urlInput = document.getElementById('customer-link-url');
+      const shortUrlInput = document.getElementById('customer-short-url');
       const openBtn = document.getElementById('btn-open-customer-link');
+      const openShortBtn = document.getElementById('btn-open-short-link');
+      const claimBtn = document.getElementById('btn-claim-tinyurl');
       const qrImg = document.getElementById('customer-qr-img');
 
       if (urlInput) urlInput.value = customerUrl;
+      if (shortUrlInput) shortUrlInput.value = tinyUrlTarget;
       if (openBtn) openBtn.href = customerUrl;
+      if (openShortBtn) openShortBtn.href = tinyUrlTarget;
+      if (claimBtn) claimBtn.href = tinyUrlClaimUrl;
       if (qrImg) {
         qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(customerUrl)}`;
       }
       if (resultBox) resultBox.style.display = 'block';
 
-      saveOrderToHistory(slug, customerConfig.appTitle || slug, customerUrl);
+      saveOrderToHistory(slug, customerConfig.appTitle || slug, customerUrl, tinyUrlTarget);
       renderOrdersHistory();
 
       showToast(`🎉 Đã tạo thành công link riêng cho khách: <b>${slug}</b>!`, 4000);
@@ -717,18 +727,42 @@
               <!-- Hộp kết quả link sau khi tạo -->
               <div class="dlove-link-result-box" id="customer-link-result" style="display:none;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
-                  <span style="font-size:13px; font-weight:700; color:#2ecc71;">🎉 Đã tạo link thành công cho khách!</span>
+                  <span style="font-size:13.5px; font-weight:700; color:#2ecc71;">🎉 Đã xuất link thành công cho khách!</span>
                 </div>
-                <div class="dlove-link-url-row">
-                  <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
-                  <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-customer-link" style="padding:8px 14px; font-size:12px;">
-                    📋 Sao chép
-                  </button>
-                  <a href="" target="_blank" id="btn-open-customer-link" class="dlove-btn dlove-btn-outline" style="padding:8px 14px; font-size:12px;">
-                    👁️ Mở link
-                  </a>
+
+                <!-- 1. Link rút gọn ngắn đẹp -->
+                <div class="dlove-shortlink-card">
+                  <div class="dlove-shortlink-title">
+                    <h4>⚡ LINK RÚT GỌN NGẮN & ĐẸP (Gửi Zalo / Messenger):</h4>
+                    <a id="btn-claim-tinyurl" href="" target="_blank" class="dlove-badge-tinyurl" style="text-decoration:none;">🔗 Đăng ký đuôi TinyURL này</a>
+                  </div>
+                  <div class="dlove-link-url-row">
+                    <input type="text" id="customer-short-url" class="dlove-link-input" style="color:#ff85a2; font-weight:700;" readonly>
+                    <button type="button" class="dlove-btn dlove-btn-primary" id="btn-copy-short-link" style="padding:8px 14px; font-size:12px;">
+                      📋 Copy link ngắn
+                    </button>
+                    <a href="" target="_blank" id="btn-open-short-link" class="dlove-btn dlove-btn-outline" style="padding:8px 14px; font-size:12px;">
+                      👁️ Mở
+                    </a>
+                  </div>
                 </div>
-                <div id="customer-qr-box" style="margin-top:8px; display:flex; align-items:center; gap:14px;">
+
+                <!-- 2. Link gốc trực tiếp -->
+                <div style="margin-top:6px;">
+                  <div style="font-size:11.5px; color:var(--ed-text-muted); margin-bottom:4px;">Link gốc GitHub Pages:</div>
+                  <div class="dlove-link-url-row">
+                    <input type="text" id="customer-link-url" class="dlove-link-input" readonly>
+                    <button type="button" class="dlove-btn dlove-btn-outline" id="btn-copy-customer-link" style="padding:7px 12px; font-size:11.5px;">
+                      📋 Copy link gốc
+                    </button>
+                    <a href="" target="_blank" id="btn-open-customer-link" class="dlove-btn dlove-btn-outline" style="padding:7px 12px; font-size:11.5px;">
+                      👁️ Mở link gốc
+                    </a>
+                  </div>
+                </div>
+
+                <!-- 3. Mã QR Code -->
+                <div id="customer-qr-box" style="margin-top:10px; display:flex; align-items:center; gap:14px; background:rgba(255,255,255,0.03); padding:10px; border-radius:10px;">
                   <img id="customer-qr-img" src="" alt="QR Code" style="width:84px; height:84px; border-radius:8px; background:#fff; padding:4px;">
                   <div style="font-size:12px; color:var(--ed-text-muted);">
                     <b style="color:#fff;">Mã QR gửi khách:</b><br>
@@ -1049,7 +1083,18 @@
         const urlInput = document.getElementById('customer-link-url');
         if (urlInput && urlInput.value) {
           navigator.clipboard.writeText(urlInput.value);
-          showToast('📋 Đã sao chép link gửi khách thành công!');
+          showToast('📋 Đã sao chép link gốc!');
+        }
+      });
+    }
+
+    const copyShortLinkBtn = document.getElementById('btn-copy-short-link');
+    if (copyShortLinkBtn) {
+      copyShortLinkBtn.addEventListener('click', () => {
+        const shortInput = document.getElementById('customer-short-url');
+        if (shortInput && shortInput.value) {
+          navigator.clipboard.writeText(shortInput.value);
+          showToast('📋 Đã sao chép link rút gọn TinyURL!');
         }
       });
     }
