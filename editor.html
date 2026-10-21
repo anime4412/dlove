@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLove Studio · Bảng Điều Khiển & Chỉnh Sửa Quà Tặng 3D</title>
+    <link rel="icon" type="image/png" href="assets/images/icons/couple.png">
+    <link rel="stylesheet" href="assets/editor.css">
+    <style>
+        :root {
+            --studio-bg: #110913;
+            --studio-sidebar-w: 520px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--studio-bg);
+            color: var(--ed-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Navbar */
+        .studio-navbar {
+            height: 56px;
+            background: rgba(28, 14, 30, 0.95);
+            border-bottom: 1px solid var(--ed-card-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+        .studio-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #fff;
+        }
+        .studio-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Split Workspace */
+        .studio-workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Left Editor Panel */
+        .studio-panel-left {
+            width: var(--studio-sidebar-w);
+            min-width: 440px;
+            max-width: 600px;
+            background: var(--ed-bg-glass);
+            border-right: 1px solid var(--ed-card-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .studio-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Right Live Preview Area */
+        .studio-panel-right {
+            flex: 1;
+            background: #000;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .preview-device-frame {
+            width: 100%;
+            height: 100%;
+            max-width: 420px;
+            max-height: 860px;
+            background: #000;
+            border-radius: 36px;
+            border: 6px solid #2d182e;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(232, 99, 138, 0.15);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-notch {
+            height: 24px;
+            background: #2d182e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-notch-bar {
+            width: 80px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .preview-iframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: #000;
+        }
+
+        .preview-toolbar {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            display: flex;
+            gap: 8px;
+            z-index: 50;
+        }
+
+        @media (max-width: 900px) {
+            .studio-workspace {
+                flex-direction: column;
+            }
+            .studio-panel-left {
+                width: 100%;
+                min-width: 100%;
+                max-width: 100%;
+                height: 60vh;
+            }
+            .studio-panel-right {
+                height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <header class="studio-navbar">
+        <div class="studio-brand">
+            <span style="font-size: 22px;">🎁</span>
+            <span>DLOVE STUDIO · BỘ CÔNG CỤ TÙY BIẾN QUÀ TẶNG 3D</span>
+            <span class="dlove-badge-shop">Bản Dành Cho Shop</span>
+        </div>
+        <div class="studio-nav-actions">
+            <button type="button" class="dlove-btn dlove-btn-outline" id="btn-top-reload-preview" style="padding: 6px 14px; font-size: 12.5px;">
+                🔄 Tải lại xem trước
+            </button>
+            <a href="index.html" target="_blank" class="dlove-btn dlove-btn-outline" style="padding: 6px 14px; font-size: 12.5px;">
+                ↗️ Mở toàn màn hình
+            </a>
+            <button type="button" class="dlove-btn dlove-btn-success" id="btn-top-export" style="padding: 6px 16px; font-size: 12.5px;">
+                ⬇️ Xuất file gửi khách
+            </button>
+        </div>
+    </header>
+
+    <!-- Split Workspace -->
+    <div class="studio-workspace">
+        <!-- Left Panel: Editor Form -->
+        <div class="studio-panel-left">
+            <!-- Quick Presets -->
+            <div class="dlove-presets-bar">
+                <span class="dlove-presets-label">⚡ Mẫu:</span>
+                <button type="button" class="dlove-preset-chip" data-preset="birthday">🎂 Sinh Nhật</button>
+                <button type="button" class="dlove-preset-chip" data-preset="women2010">💐 20/10 & 8/3</button>
+                <button type="button" class="dlove-preset-chip" data-preset="anniversary">💖 Kỷ Niệm Yêu</button>
+                <button type="button" class="dlove-preset-chip" data-preset="valentine">💌 Tỏ Tình</button>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="dlove-modal-tabs">
+                <button class="dlove-tab-btn active" data-tab="tab-morph">📝 Chữ 3D</button>
+                <button class="dlove-tab-btn" data-tab="tab-particle">🌌 Ảnh hạt 3D</button>
+                <button class="dlove-tab-btn" data-tab="tab-sphere">🔮 12 Ảnh</button>
+                <button class="dlove-tab-btn" data-tab="tab-letter">💌 Bức thư</button>
+                <button class="dlove-tab-btn" data-tab="tab-settings">🔒 Mật khẩu & Nhạc</button>
+                <button class="dlove-tab-btn" data-tab="tab-export">📦 Giao khách</button>
+            </div>
+
+            <!-- Tab Body Contents -->
+            <div class="studio-panel-body" id="studio-form-container">
+                <!-- Tab 1: Morph Texts -->
+                <div class="dlove-tab-pane active" id="tab-morph">
+                    <div class="dlove-form-group">
+                        <label class="dlove-label">
+                            <span>Tiêu đề hiển thị tab trình duyệt</span>
+                        </label>
+                        <input type="text" id="cfg-appTitle" class="dlove-input" placeholder="Ví dụ: Món Quà Nhỏ Cho Em">
+                    </div>
+
+                    <div class="dlove-switch-row">
+                        <div class="dlove-switch-info">
+                            <h4>Bật hiệu ứng hạt chữ 3D</h4>
+                            <p>Các hạt ánh sáng biến hoá thành chữ</p>
+                        </div>
+                        <label class="dlove-switch">
+                            <input type="checkbox" id="cfg-enableMorphEffect">
+                            <span class="dlove-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Dòng chữ 3D số 1</span></label>
+                        <input type="text" id="cfg-morphText-0" class="dlove-input" placeholder="Chúc bé iu của anh">
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Dòng chữ 3D số 2</span></label>
+                        <input type="text" id="cfg-morphText-1" class="dlove-input" placeholder="Ngày Phụ Nữ Việt Nam">
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Dòng chữ 3D số 3</span></label>
+                        <input type="text" id="cfg-morphText-2" class="dlove-input" placeholder="vui vẻ !">
+                    </div>
+
+                    <div class="dlove-actions-row">
+                        <button type="button" class="dlove-btn-preview-scene" data-scene="effects">
+                            👁️ Xem thử cảnh Chữ 3D
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Particle Image -->
+                <div class="dlove-tab-pane" id="tab-particle">
+                    <p style="font-size:12.5px; color:var(--ed-text-muted); margin-bottom:14px; line-height:1.4;">
+                        ✨ Ảnh biến thành hàng vạn hạt sao phát sáng. Nên chọn chân dung hoặc ảnh đôi có độ tương phản cao.
+                    </p>
+
+                    <div class="dlove-image-dropzone">
+                        <div class="dlove-image-preview-box">
+                            <img id="preview-particle-img" class="dlove-preview-thumb" src="" alt="Particle Preview">
+                            <div class="dlove-preview-info">
+                                <h4 style="margin:0 0 6px 0; font-size:14px;">Ảnh hạt 3D hiện tại</h4>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    <label class="dlove-btn dlove-btn-primary" style="padding:6px 14px; font-size:12px; cursor:pointer;">
+                                        📁 Tải ảnh mới từ máy
+                                        <input type="file" id="input-particle-file" accept="image/*" style="display:none;">
+                                    </label>
+                                    <button type="button" class="dlove-btn dlove-btn-outline" id="btn-reset-particle" style="padding:6px 12px; font-size:12px;">
+                                        🔄 Ảnh mẫu
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dlove-actions-row" style="margin-top:16px;">
+                        <button type="button" class="dlove-btn-preview-scene" data-scene="effects">
+                            👁️ Xem thử cảnh Hạt 3D
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Sphere 12 Images -->
+                <div class="dlove-tab-pane" id="tab-sphere">
+                    <div class="dlove-switch-row">
+                        <div class="dlove-switch-info">
+                            <h4>Quả cầu 12 ảnh kỷ niệm 3D</h4>
+                            <p>Xoay tròn 360 độ</p>
+                        </div>
+                        <label class="dlove-switch">
+                            <input type="checkbox" id="cfg-enableSphere">
+                            <span class="dlove-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="dlove-switch-row">
+                        <div class="dlove-switch-info">
+                            <h4>Ảnh bay lơ lửng & mưa ảnh</h4>
+                            <p>Bay lãng mạn trong không gian 3D</p>
+                        </div>
+                        <label class="dlove-switch">
+                            <input type="checkbox" id="cfg-enableSphereFlyingImages">
+                            <span class="dlove-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Bulk Upload -->
+                    <div style="background:rgba(255,107,139,0.1); border:1px dashed var(--ed-primary); border-radius:12px; padding:12px; margin:14px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                        <div>
+                            <h4 style="margin:0 0 2px 0; font-size:13.5px; color:#fff;">⚡ Tải nhanh 1-12 ảnh</h4>
+                            <p style="margin:0; font-size:11.5px; color:var(--ed-text-muted);">Khách gửi ảnh, chọn 1 lần là xong!</p>
+                        </div>
+                        <label class="dlove-btn dlove-btn-primary" style="padding:6px 12px; font-size:12px; cursor:pointer;">
+                            📁 Chọn nhiều ảnh
+                            <input type="file" id="input-sphere-bulk" accept="image/*" multiple style="display:none;">
+                        </label>
+                    </div>
+
+                    <!-- Grid 12 Photos -->
+                    <div class="dlove-sphere-grid" id="dlove-sphere-grid"></div>
+
+                    <div class="dlove-actions-row" style="margin-top:16px;">
+                        <button type="button" class="dlove-btn-preview-scene" data-scene="images">
+                            👁️ Xem thử cảnh Quả cầu 3D
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Love Letter -->
+                <div class="dlove-tab-pane" id="tab-letter">
+                    <div class="dlove-switch-row">
+                        <div class="dlove-switch-info">
+                            <h4>Bức thư tình thần Cupid</h4>
+                            <p>Hiệu ứng gõ chữ tay lãng mạn</p>
+                        </div>
+                        <label class="dlove-switch">
+                            <input type="checkbox" id="cfg-enableLetter">
+                            <span class="dlove-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Lời nhắn trong thư</span></label>
+                        <textarea id="cfg-letterText" class="dlove-textarea" rows="6" placeholder="Nhập lời chúc..."></textarea>
+                    </div>
+
+                    <div class="dlove-form-grid-2 dlove-form-grid">
+                        <div class="dlove-form-group">
+                            <label class="dlove-label"><span>Ảnh trong thư</span></label>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <img id="preview-letter-img" class="dlove-preview-thumb" src="" alt="Letter Image">
+                                <label class="dlove-btn dlove-btn-outline" style="padding:6px 10px; font-size:11.5px; cursor:pointer;">
+                                    📁 Đổi ảnh
+                                    <input type="file" id="input-letter-file" accept="image/*" style="display:none;">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="dlove-form-group">
+                            <label class="dlove-label"><span>Dòng chữ dưới ảnh</span></label>
+                            <input type="text" id="cfg-letterCaption" class="dlove-input" placeholder="♥ Yêu em nhiều">
+                        </div>
+                    </div>
+
+                    <div class="dlove-actions-row">
+                        <button type="button" class="dlove-btn-preview-scene" data-scene="letter">
+                            👁️ Xem thử cảnh Bức thư
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 5: Settings, Passcode & Music -->
+                <div class="dlove-tab-pane" id="tab-settings">
+                    <h4 style="font-size:13.5px; margin-bottom:10px; color:var(--ed-accent);">🔒 Màn hình khoá mật khẩu</h4>
+                    <div class="dlove-switch-row">
+                        <div class="dlove-switch-info">
+                            <h4>Bật khoá mật khẩu 4 số</h4>
+                        </div>
+                        <label class="dlove-switch">
+                            <input type="checkbox" id="cfg-enablePasscode">
+                            <span class="dlove-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="dlove-form-grid-2 dlove-form-grid">
+                        <div class="dlove-form-group">
+                            <label class="dlove-label"><span>Mật mã (4 số)</span></label>
+                            <input type="text" id="cfg-passcode" class="dlove-input" maxlength="4" placeholder="2010">
+                        </div>
+                        <div class="dlove-form-group">
+                            <label class="dlove-label"><span>Tiêu đề khoá</span></label>
+                            <input type="text" id="cfg-passcodeTitle" class="dlove-input" placeholder="Mật mã trái tim">
+                        </div>
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Gợi ý mật mã</span></label>
+                        <input type="text" id="cfg-passcodeSubtitle" class="dlove-input" placeholder="Gợi ý: Ngày sinh nhật của em">
+                    </div>
+
+                    <hr style="border:none; border-top:1px solid var(--ed-card-border); margin:18px 0;">
+
+                    <h4 style="font-size:13.5px; margin-bottom:10px; color:var(--ed-accent);">🎵 Nhạc nền</h4>
+                    <div class="dlove-form-group">
+                        <label class="dlove-label"><span>Chọn bài hát</span></label>
+                        <select id="cfg-bgMusic-select" class="dlove-select">
+                            <option value="musics/noinaycoanh.mp3">Nơi Này Có Anh — Sơn Tùng M-TP (Mặc định)</option>
+                            <option value="custom-file">📁 Tải file MP3 từ máy tính/điện thoại...</option>
+                            <option value="custom-url">🔗 Dán link bài hát MP3...</option>
+                        </select>
+                    </div>
+
+                    <div class="dlove-form-group" id="group-custom-music-file" style="display:none;">
+                        <input type="file" id="input-music-file" accept="audio/mp3,audio/*" class="dlove-input">
+                    </div>
+
+                    <div class="dlove-form-group" id="group-custom-music-url" style="display:none;">
+                        <input type="text" id="cfg-bgMusic-url" class="dlove-input" placeholder="https://domain.com/baihat.mp3">
+                    </div>
+
+                    <div class="dlove-form-group">
+                        <label class="dlove-label">
+                            <span>Âm lượng: <span id="val-bgVolume">55%</span></span>
+                        </label>
+                        <input type="range" id="cfg-bgVolume" min="0" max="1" step="0.05" value="0.55" style="width:100%; accent-color:var(--ed-primary);">
+                    </div>
+                </div>
+
+                <!-- Tab 6: Export & Deliver -->
+                <div class="dlove-tab-pane" id="tab-export">
+                    <div class="dlove-delivery-card">
+                        <div>
+                            <h3>📥 Xuất file HTML gửi khách</h3>
+                            <p>Tự động đóng gói nội dung, ảnh và ẩn thanh công cụ shop.</p>
+                        </div>
+                        <button type="button" class="dlove-btn dlove-btn-success" id="btn-export-html" style="white-space:nowrap;">
+                            ⬇️ Tải file gửi khách
+                        </button>
+                    </div>
+
+                    <div class="dlove-delivery-card">
+                        <div>
+                            <h3>💾 Lưu file cấu hình (.json)</h3>
+                            <p>Lưu lại đơn của khách để tiện chỉnh sửa lại sau này.</p>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="dlove-btn dlove-btn-outline" id="btn-save-json" style="padding:6px 12px; font-size:12px;">
+                                💾 Lưu
+                            </button>
+                            <label class="dlove-btn dlove-btn-outline" style="padding:6px 12px; font-size:12px; cursor:pointer;">
+                                📂 Mở
+                                <input type="file" id="input-load-json" accept=".json" style="display:none;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="dlove-delivery-card">
+                        <div>
+                            <h3>🔄 Khôi phục mặc định</h3>
+                            <p>Đặt lại toàn bộ nội dung và ảnh về nguyên bản.</p>
+                        </div>
+                        <button type="button" class="dlove-btn dlove-btn-outline" id="btn-reset-all" style="color:#ff85a2; border-color:#ff85a2; padding:6px 12px; font-size:12px;">
+                            ⚠️ Khôi phục
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Save Bar -->
+            <div class="dlove-modal-footer">
+                <button type="button" class="dlove-btn dlove-btn-outline" id="btn-apply-save">
+                    💾 Lưu cấu hình
+                </button>
+                <button type="button" class="dlove-btn dlove-btn-primary" id="btn-live-preview">
+                    👁️ Cập nhật xem trước
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Device Frame Preview -->
+        <div class="studio-panel-right">
+            <div class="preview-toolbar">
+                <button type="button" class="dlove-btn dlove-btn-outline" id="btn-preview-reset-scene" style="background:rgba(0,0,0,0.6); font-size:12px; padding:6px 12px;">
+                    ▶️ Phát từ đầu
+                </button>
+            </div>
+            <div class="preview-device-frame">
+                <div class="preview-notch">
+                    <div class="preview-notch-bar"></div>
+                </div>
+                <iframe id="preview-iframe" class="preview-iframe" src="index.html"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Editor Controller -->
+    <script src="assets/editor.js"></script>
+    <script>
+        // Custom Studio wiring for live iframe refresh
+        document.addEventListener('DOMContentLoaded', () => {
+            const iframe = document.getElementById('preview-iframe');
+            const reloadBtn = document.getElementById('btn-top-reload-preview');
+            const topExportBtn = document.getElementById('btn-top-export');
+            const resetSceneBtn = document.getElementById('btn-preview-reset-scene');
+
+            function refreshIframe(url = 'index.html') {
+                if (iframe) {
+                    iframe.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+                }
+            }
+
+            if (reloadBtn) reloadBtn.addEventListener('click', () => refreshIframe('index.html'));
+            if (resetSceneBtn) resetSceneBtn.addEventListener('click', () => refreshIframe('index.html'));
+
+            if (topExportBtn) {
+                topExportBtn.addEventListener('click', () => {
+                    if (window.DLoveEditor) window.DLoveEditor.exportCustomerHTML();
+                });
+            }
+
+            // Override scene preview buttons in studio to update the iframe directly!
+            document.querySelectorAll('.dlove-btn-preview-scene').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const scene = btn.getAttribute('data-scene');
+                    if (window.DLoveEditor) window.DLoveEditor.saveConfig();
+                    refreshIframe(`index.html?preview=1&scene=${scene}`);
+                });
+            });
+
+            // Update iframe when clicking "Cập nhật xem trước"
+            const livePreviewBtn = document.getElementById('btn-live-preview');
+            if (livePreviewBtn) {
+                livePreviewBtn.addEventListener('click', () => {
+                    if (window.DLoveEditor) window.DLoveEditor.saveConfig();
+                    refreshIframe('index.html');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -42,6 +42,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Dancing+Script:wght@400;500;600;700&family=Pacifico&display=swap">
     <!-- Preload font local để iOS tải sớm (TTF). Có thể thêm Pacifico-Regular.woff2 để iOS 26 ổn hơn. -->
     <link rel="preload" href="assets/fonts/Pacifico-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="stylesheet" href="assets/editor.css">
 </head>
 <body>
     <style>
@@ -573,7 +574,7 @@
     "websiteId": "e0c7194b6d25b713",
     "appTitle": "Món Quà Nhỏ",
     "appIcon": "assets/images/icons/couple.png",
-    "enableWebsiteInfo": false,
+    "enableWebsiteInfo": true,
     "enablePasscode": false,
     "enableMorphEffect": true,
     "enableSphere": true,
@@ -611,8 +612,32 @@
     "bgVolume": 0.55
 };
 
-    window.APP_CONFIG = window.DEFAULT_APP_CONFIG;
-    window.APP_CONFIG_PROMISE = Promise.resolve(window.DEFAULT_APP_CONFIG);
+    // Tự động hợp nhất cấu hình tùy chỉnh từ LocalStorage hoặc URL (hỗ trợ chỉnh sửa và chia sẻ)
+    (function () {
+        var activeConfig = window.DEFAULT_APP_CONFIG;
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            var cfgParam = urlParams.get('cfg') || urlParams.get('config');
+            if (cfgParam) {
+                var decoded = JSON.parse(decodeURIComponent(escape(atob(cfgParam))));
+                if (decoded && typeof decoded === 'object') {
+                    activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, decoded);
+                }
+            } else {
+                var stored = localStorage.getItem('DLOVE_CUSTOM_CONFIG');
+                if (stored) {
+                    var parsed = JSON.parse(stored);
+                    if (parsed && typeof parsed === 'object') {
+                        activeConfig = Object.assign({}, window.DEFAULT_APP_CONFIG, parsed);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Lỗi load active config:', e);
+        }
+        window.APP_CONFIG = activeConfig;
+        window.APP_CONFIG_PROMISE = Promise.resolve(activeConfig);
+    })();
 </script>
 
     <script type="importmap">
@@ -2400,5 +2425,8 @@
 
         })(); // end async IIFE
     </script> 
+    <!-- EDITOR_INJECT_START -->
+    <script src="assets/editor.js"></script>
+    <!-- EDITOR_INJECT_END -->
 </body>
 </html>
